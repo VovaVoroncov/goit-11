@@ -1,0 +1,29 @@
+plugins {
+    id 'java'
+}
+
+group = 'ua.goit'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    compileOnly 'org.projectlombok:lombok:1.18.26'
+    annotationProcessor 'org.projectlombok:lombok:1.18.26'
+    implementation 'org.flywaydb:flyway-core:9.19.3'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'com.h2database:h2:2.1.214'
+    implementation 'org.hibernate.orm:hibernate-core:6.2.4.Final'
+}
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs += '-Xlint:deprecation'
+}
+
+test {
+    useJUnitPlatform()
+}
