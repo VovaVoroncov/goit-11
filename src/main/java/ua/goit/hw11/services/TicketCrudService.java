@@ -4,78 +4,88 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import ua.goit.hw11.HibernateUtil;
+import ua.goit.hw11.models.Client;
+import ua.goit.hw11.models.Planet;
 import ua.goit.hw11.models.Ticket;
 
+import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class TicketCrudService {
-    private final SessionFactory sessionFactory;
+    private final ClientCrudService clientCrudService = new ClientCrudService();
+    private final PlanetCrudService planetCrudService = new PlanetCrudService();
 
-    public TicketCrudService(HibernateUtil hibernateUtil) {
-        sessionFactory = hibernateUtil.getSessionFactory();
+    public Ticket create(Ticket ticket) throws SQLException {
+        try (Session session = HibernateUtil.getInstance().getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+            Ticket newTicket = new Ticket();
+            newTicket.setCreatedAt(LocalDateTime.now());
 
-    }
-    public void addTicket(Ticket ticket) {
-        Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
-            transaction = session.beginTransaction();
-            session.persist(ticket);
-            transaction.commit();
-        } catch (Exception e) {
-            if (transaction != null) {
-                transaction.rollback();
+            long clientId = ticket.getClient().getId();
+            if(clientId != 0 && clientCrudService.getById(clientId) != null ){
+                newTicket.setClient(ticket.getClient());
+            } else {
+                Client newClient = clientCrudService.create(ticket.getClient());
+                newTicket.setClient(newClient);
             }
-            e.printStackTrace();
+
+            String fromPlanetId = ticket.getFromPlanet().getId();
+            if(fromPlanetId != null && planetCrudService.getById(fromPlanetId) != null ){
+                newTicket.setFromPlanet(ticket.getFromPlanet());
+            } else {
+                Planet newPlanet = planetCrudService.create(ticket.getFromPlanet());
+                newTicket.setFromPlanet(newPlanet);
+            }
+
+            String toPlanetId = ticket.getToPlanet().getId();
+            if(toPlanetId != null && planetCrudService.getById(toPlanetId) != null ){
+                newTicket.setToPlanet(ticket.getToPlanet());
+            } else {
+                Planet newPlanet = planetCrudService.create(ticket.getToPlanet());
+                newTicket.setToPlanet(newPlanet);
+            }
+            session.persist(newTicket);
+            transaction.commit();
+            return newTicket;
         }
     }
 
-    public Ticket getById(Integer id) {
-        try (Session session = sessionFactory.openSession()) {
+    public Ticket getById(long id) throws SQLException {
+        try (Session session = HibernateUtil.getInstance().getSessionFactory().openSession()) {
             return session.get(Ticket.class, id);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
         }
     }
 
-    public void updateTicket(Ticket ticket, Integer id) {
-        Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
-            transaction = session.beginTransaction();
-            ticket.setId(id);
-            session.merge(ticket);
+    public Ticket update(long id, Ticket ticket) throws SQLException {
+        try (Session session = HibernateUtil.getInstance().getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
+            Ticket existing = session.get(Ticket.class, id);
+            existing.setClient(ticket.getClient());
+            existing.setFromPlanet(ticket.getFromPlanet());
+            existing.setToPlanet(ticket.getToPlanet());
+            session.persist(existing);
             transaction.commit();
-        } catch (Exception e) {
-            if (transaction != null) {
-                transaction.rollback();
-            }
+            return existing;
         }
     }
 
-    public void deleteById(Integer id) {
-        Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
-            transaction = session.beginTransaction();
+    public boolean delete(long id) throws SQLException {
+        try (Session session = HibernateUtil.getInstance().getSessionFactory().openSession()) {
+            Transaction transaction = session.beginTransaction();
             Ticket ticket = session.get(Ticket.class, id);
             if (ticket != null) {
                 session.remove(ticket);
                 transaction.commit();
-                System.out.println("Ticket with id " + id + " has been deleted.");
+                return true;
             }
-        } catch (Exception e) {
-            if (transaction != null) {
-                transaction.rollback();
-            }
-            e.printStackTrace();
+            return false;
         }
     }
 
-    public List<Ticket> getAllTickets() {
-        try (Session session = sessionFactory.openSession()) {
-            return session.createQuery("from Ticket", Ticket.class).list();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+    public List<Ticket> getAll() throws SQLException {
+        try (Session session = HibernateUtil.getInstance().getSessionFactory().openSession()) {
+            return session.createQuery("FROM Ticket", Ticket.class).list();
         }
     }
 }
